@@ -8,18 +8,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      NODE_VERSION: '20'
 
     steps:
-    - name: Use Node.js ${{ env.NODE_VERSION }}
-      uses: actions/setup-node@v2
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-
     - name: Checkout code
       uses: actions/checkout@v2
-
+      
     - name: Install dependencies and setup environment
       run: |
         sudo apt update -y
@@ -31,7 +24,9 @@ jobs:
         python3 -m venv venv
         source venv/bin/activate
         pip install -r requirements.txt
-
+        
+        # Perform any additional setup steps here
+        
         python manage.py migrate
         python manage.py collectstatic --noinput
 
