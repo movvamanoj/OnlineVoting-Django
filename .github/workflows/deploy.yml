@@ -28,9 +28,6 @@ jobs:
         python manage.py migrate  # Run Django migrations
         python manage.py collectstatic --noinput  # Collect static files
 
-        # Install and configure Gunicorn (if needed)
-        # sudo systemctl restart gunicorn
-
     - name: Deploy code to EC2
       uses: appleboy/ssh-action@master
       with:
@@ -39,9 +36,10 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.SSH_PORT }}
         script: |
-          cd OnlineVoting-Django  # Navigate to your Django project directory
-          git pull origin main  # Pull the latest changes from your repository
-          source venv/bin/activate  # Activate the virtual environment
-          python manage.py migrate  # Run Django migrations
-          python manage.py collectstatic --noinput  # Collect static files
-          sudo systemctl restart gunicorn  # Restart Gunicorn (if applicable)
+          cd ~/OnlineVoting-Django  # Adjust to the correct path of your Django project
+          git pull origin main
+          source venv/bin/activate
+          python manage.py migrate
+          python manage.py collectstatic --noinput
+          sudo systemctl restart gunicorn
+
