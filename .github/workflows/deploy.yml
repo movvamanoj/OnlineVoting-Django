@@ -1,46 +1,45 @@
-name: Deploy Django Project
+name: Deploy Django App
 
 on:
   push:
-    branches:
-      - main
-      
+    branches: [ main ]
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-      
-    - name: Install dependencies and setup environment
-      run: |
-        sudo apt update -y
-        sudo apt install -y git python3 python3-pip
-        sudo pip3 install virtualenv
-        
-        git clone https://github.com/movvamanoj/OnlineVoting-Django.git
-        cd OnlineVoting-Django
-        python3 -m venv venv
-        source venv/bin/activate
-        pip install -r requirements.txt
-        
-        # Perform any additional setup steps here
-        
-        python manage.py migrate
-        python manage.py collectstatic --noinput
+      - uses: actions/checkout@v3
 
-    - name: Deploy code to EC2
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: ${{ secrets.SSH_PORT }}
-        script: |
-          cd OnlineVoting-Django
-          git pull origin main
-          source venv/bin/activate
-          python manage.py migrate
-          python manage.py collectstatic --noinput
-          sudo systemctl restart gunicorn
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          region: us-east-1  
+
+      - name: SSH into EC2 instance
+        uses: nyancatdaffy/ssh-action@v2
+        with:
+          host: ${{ secrets.EC2_HOST }}  
+          username: ${{ secrets.EC2_USER }} 
+          key: ${{ secrets.PRIVATE_SSH_KEY }}  
+          script: |
+            # Update paths based on your project structure
+            cd /var/www/onlinevoting  # Assuming your project directory
+
+            # Deployment Script
+            git pull origin main
+            sudo apt update
+            sudo apt install python3-pip -y 
+            pip install -r requirements.txt
+            python manage.py collectstatic  # Assuming you have static files
+
+            # Migrate database (replace with your command if different)
+            python manage.py migrate
+
+            # Service restart commands (replace with your specific commands)
+            sudo systemctl restart nginx
+            sudo systemctl restart gunicorn  
+
+      - name: Deploy complete
+        run: echo "Deployment Successful!"
