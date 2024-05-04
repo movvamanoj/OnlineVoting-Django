@@ -1,45 +1,54 @@
-name: Deploy Django App
+name: Deploy to EC2
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main  
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          region: us-east-1  
+    - name: SSH into EC2 and deploy
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }} 
+        key: ${{ secrets.SSH_PRIVATE_KEY }} 
+        script: |
+          sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv git nginx
 
-      - name: SSH into EC2 instance
-        uses: nyancatdaffy/ssh-action@v2
-        with:
-          host: ${{ secrets.EC2_HOST }}  
-          username: ${{ secrets.EC2_USERNAME }} 
-          key: ${{ secrets.SSH_PRIVATE_KEY }}  
-          script: |
-            # Update paths based on your project structure
-            cd /var/www/onlinevoting  # Assuming your project directory
+          # Clone the repository
+          git clone https://github.com/movvamanoj/OnlineVoting-Django.git
+          cd OnlineVoting-Django
 
-            # Deployment Script
-            git pull origin main
-            sudo apt update
-            sudo apt install python3-pip -y 
-            pip install -r requirements.txt
-            python manage.py collectstatic  # Assuming you have static files
+          # Set up virtual environment
+          python3 -m venv venv
+          source venv/bin/activate
 
-            # Migrate database (replace with your command if different)
-            python manage.py migrate
+          # Install Python dependencies
+          pip install -r requirements.txt
 
-            # Service restart commands (replace with your specific commands)
-            sudo systemctl restart nginx
-            sudo systemctl restart gunicorn  
+          # Configure Django settings
+          # Assuming your settings are already configured for production
 
-      - name: Deploy complete
-        run: echo "Deployment Successful!"
+          # Set up Gunicorn
+          pip install gunicorn
+
+          # Collect static files
+          python manage.py collectstatic --noinput
+
+          # Perform database migrations
+          python manage.py migrate
+
+          # Restart Gunicorn service
+          sudo systemctl restart gunicorn
+
+          # Configure Nginx
+          sudo cp deploy/nginx.conf /etc/nginx/sites-available/django
+          sudo ln -s /etc/nginx/sites-available/django /etc/nginx/sites-enabled/
+          sudo systemctl restart nginx
